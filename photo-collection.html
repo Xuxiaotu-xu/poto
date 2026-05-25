@@ -3312,14 +3312,61 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
 
 </script>
 <script>
+  /* ── Supabase 云存储配置 ── */
+  const SUPABASE_URL = 'https://ohvmcqaergxxgldejoie.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_J_tuhNnKk1zFESOciq1y7w_dxhRplEV';
+  const BUCKET = 'xuxiaotu';
+
   const GRADES = ['一年级','二年级','三年级','四年级','五年级','六年级'];
   const GRADE_EMOJI = ['🌱','🌿','🌳','🌸','🍀','🎓'];
 
-  function loadPhotos(g) {
-    return JSON.parse(localStorage.getItem('gradPhotos_' + g) || '[]');
+  /* ── 从云端加载照片列表 ── */
+  async function loadPhotos(g) {
+    try {
+      const resp = await fetch(SUPABASE_URL + '/storage/v1/object/list/' + BUCKET, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: 'grade_' + g + '/', limit: 999, offset: 0 })
+      });
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      if (!Array.isArray(data)) return [];
+      return data.map(f => ({
+        name: f.name,
+        url: SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/grade_' + g + '/' + encodeURIComponent(f.name),
+        time: f.created_at ? new Date(f.created_at).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : f.last_accessed_at ? new Date(f.last_accessed_at).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''
+      })).sort((a,b) => b.name.localeCompare(a.name));
+    } catch(e) { console.error(e); return []; }
   }
-  function savePhotos(g, arr) {
-    localStorage.setItem('gradPhotos_' + g, JSON.stringify(arr));
+
+  /* ── 图片压缩（上传前瘦身，节省流量和存储） ── */
+  function compressImage(file, maxW) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const r = new FileReader();
+      r.onload = e => { img.src = e.target.result; };
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const ratio = maxW / Math.max(w, h);
+        if (ratio < 1) { w *= ratio; h *= ratio; }
+        const c = document.createElement('canvas');
+        c.width = Math.round(w); c.height = Math.round(h);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', 0.82);
+      };
+      img.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  /* ── 上传到 Supabase ── */
+  async function uploadPhoto(g, blob, filename) {
+    const resp = await fetch(SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/grade_' + g + '/' + filename, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY, 'Content-Type': blob.type || 'image/jpeg' },
+      body: blob
+    });
+    if (!resp.ok) throw new Error('Upload failed: ' + resp.status);
   }
 
   let selectedGrade = -1;
@@ -3340,7 +3387,7 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
 
   /* ── share panel init ── */
   function initSharePanel() {
-    const url = location.href;
+    const url = 'https://xuxiaotu-xu.github.io/poto/photo-collection.html';
     document.getElementById('shareUrl').value = url;
     const isLocal = location.protocol === 'file:' || location.hostname === 'localhost';
     const hint = document.getElementById('posterHintText');
@@ -3348,7 +3395,6 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
     if (isLocal) {
       hint.textContent = '⚠️ 当前为本地文件，请部署到公开链接后二维码才可扫描使用';
       hint.style.color = '#BA7517';
-      // 本地时生成演示用二维码（含本地路径）
       generateQR(url);
     } else {
       hint.textContent = '扫描上方二维码即可在手机上打开页面';
@@ -3481,11 +3527,12 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
     Array.from(files).forEach(file => {
       if (!file.type.startsWith('image/')) return;
       selectedFiles.push(file);
+      const idx = selectedFiles.length - 1;
       const reader = new FileReader();
       reader.onload = ev => {
         const item = document.createElement('div');
         item.className = 'preview-item';
-        item.innerHTML = `<img src="${ev.target.result}"><button class="remove-btn" onclick="removeFile(${selectedFiles.length-1},this)">×</button>`;
+        item.innerHTML = '<img src="' + ev.target.result + '"><button class="remove-btn" onclick="removeFile(' + idx + ',this)">×</button>';
         document.getElementById('previewGrid').appendChild(item);
       };
       reader.readAsDataURL(file);
@@ -3497,41 +3544,45 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
     btn.parentElement.remove();
   }
 
-  /* ── submit ── */
-  function submitPhotos() {
+  /* ── submit: 压缩后上传到云端 ── */
+  async function submitPhotos() {
     if (selectedGrade < 0) { alert('请先选择年级'); return; }
     const files = selectedFiles.filter(f => f !== null);
     if (files.length === 0) { alert('请至少选择一张照片'); return; }
 
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true; btn.textContent = '上传中…';
+    btn.disabled = true; btn.textContent = '压缩中…';
     document.getElementById('progressBar').style.display = 'block';
+    const fill = document.getElementById('progressFill');
+    fill.style.width = '0%';
 
-    const photos = loadPhotos(selectedGrade);
-    let done = 0; const total = files.length;
-    const now = new Date().toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const ts = Date.now();
+    let success = 0, fail = 0;
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        photos.push({ id: Date.now() + Math.random(), dataUrl: ev.target.result, time: now });
-        done++;
-        document.getElementById('progressFill').style.width = (done / total * 100) + '%';
-        if (done === total) {
-          savePhotos(selectedGrade, photos);
-          setTimeout(() => {
-            btn.disabled = false; btn.textContent = '上传到相册';
-            document.getElementById('progressBar').style.display = 'none';
-            document.getElementById('progressFill').style.width = '0%';
-            document.getElementById('previewGrid').innerHTML = '';
-            selectedFiles = [];
-            document.getElementById('successBanner').style.display = 'block';
-            setTimeout(() => document.getElementById('successBanner').style.display = 'none', 4000);
-          }, 400);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      btn.textContent = '上传中(' + (i + 1) + '/' + files.length + ')…';
+      try {
+        const compressed = await compressImage(file, 1600);
+        const ext = file.name.split('.').pop().toLowerCase().substring(0, 4) || 'jpg';
+        const filename = ts + '_' + i + '.' + ext;
+        await uploadPhoto(selectedGrade, compressed, filename);
+        success++;
+      } catch(e) {
+        console.error('Upload error:', e);
+        fail++;
+      }
+      fill.style.width = ((i + 1) / files.length * 100) + '%';
+    }
+
+    btn.disabled = false; btn.textContent = '上传到相册';
+    document.getElementById('progressBar').style.display = 'none';
+    fill.style.width = '0%';
+    document.getElementById('previewGrid').innerHTML = '';
+    selectedFiles = [];
+    document.getElementById('successBanner').style.display = 'block';
+    document.getElementById('successBanner').innerHTML = '<div class="s-icon">🎉</div><p><strong>上传完成！</strong><br>成功 ' + success + ' 张' + (fail > 0 ? '，失败 ' + fail + ' 张' : '') + '<br>切换到「查看相册」可浏览所有照片。</p>';
+    setTimeout(() => document.getElementById('successBanner').style.display = 'none', 5000);
   }
 
   /* ── gallery ── */
@@ -3542,28 +3593,55 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
     renderGallery(idx);
   }
 
-  function renderGallery(idx) {
-    const photos = loadPhotos(idx);
-    document.getElementById('galleryGradeTitle').textContent = GRADE_EMOJI[idx] + ' ' + GRADES[idx] + '相册';
-    document.getElementById('galleryCount').textContent = photos.length + ' 张';
+  async function renderGallery(idx) {
     const grid = document.getElementById('galleryGrid');
-    if (photos.length === 0) {
-      grid.innerHTML = '<div class="empty-gallery"><div class="e-icon">📭</div><div>还没有照片，快去上传吧！</div></div>';
-      return;
+    document.getElementById('galleryGradeTitle').textContent = GRADE_EMOJI[idx] + ' ' + GRADES[idx] + '相册';
+    document.getElementById('galleryCount').textContent = '加载中…';
+    grid.innerHTML = '<div class="empty-gallery"><div class="e-icon">⏳</div><div>正在从云端加载照片…</div></div>';
+
+    try {
+      const photos = await loadPhotos(idx);
+      document.getElementById('galleryCount').textContent = photos.length + ' 张';
+      if (photos.length === 0) {
+        grid.innerHTML = '<div class="empty-gallery"><div class="e-icon">📭</div><div>还没有照片上传哦，快去上传吧！</div></div>';
+        lbPhotos = [];
+        return;
+      }
+      lbPhotos = photos;
+      const actionsHtml = '<div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;gap:8px"><button onclick="downloadAll(' + idx + ')" style="padding:7px 16px;border:1.5px solid #534AB7;border-radius:20px;background:white;color:#534AB7;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit" title="逐张下载共' + photos.length + '张照片">⬇ 下载全部 (' + photos.length + '张)</button><a href="' + SUPABASE_URL + '/project/default/storage/buckets/' + BUCKET + '" target="_blank" style="padding:7px 16px;border:1.5px solid #b4b2a9;border-radius:20px;background:white;color:#888780;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;font-family:inherit" title="打开Supabase控制台可批量管理文件">🔧 管理后台</a></div>';
+      grid.innerHTML = actionsHtml + photos.map((p, i) => '<div class="gallery-item"><img src="' + p.url + '" loading="lazy" onclick="openLightbox(' + i + ')"><div class="g-meta" style="display:flex;justify-content:space-between;align-items:center"><span class="g-time">' + p.time + '</span><button onclick="event.stopPropagation();downloadPhoto(&#39;' + encodeURIComponent(p.url) + '&#39;,&#39;' + p.name.replace(/'/g,'\\&#39;') + '&#39;)" style="border:none;background:none;cursor:pointer;font-size:16px;padding:0 2px" title="下载这张照片">⬇</button></div></div>').join('');
+    } catch(e) {
+      console.error(e);
+      document.getElementById('galleryCount').textContent = '加载失败';
+      grid.innerHTML = '<div class="empty-gallery"><div class="e-icon">❌</div><div>加载失败，请刷新页面重试</div></div>';
     }
-    lbPhotos = photos.slice().reverse();
-    grid.innerHTML = lbPhotos.map((p, i) => `
-      <div class="gallery-item">
-        <img src="${p.dataUrl}" loading="lazy" onclick="openLightbox(${i})">
-        <div class="g-meta"><div class="g-time">${p.time}</div></div>
-      </div>
-    `).join('');
+  }
+
+  /* 下载单张照片 */
+  function downloadPhoto(url, name) {
+    const a = document.createElement('a');
+    a.href = decodeURIComponent(url);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  /* 下载当前年级全部照片 */
+  async function downloadAll(idx) {
+    const photos = lbPhotos;
+    if (photos.length === 0) { alert('没有照片可下载'); return; }
+    if (!confirm('将逐张下载 ' + photos.length + ' 张照片，确定继续？')) return;
+    for (let i = 0; i < photos.length; i++) {
+      downloadPhoto(photos[i].url, photos[i].name);
+      await new Promise(r => setTimeout(r, 400));
+    }
   }
 
   /* ── lightbox ── */
   function openLightbox(idx) {
     lbIndex = idx;
-    document.getElementById('lbImg').src = lbPhotos[idx].dataUrl;
+    document.getElementById('lbImg').src = lbPhotos[idx].url;
     document.getElementById('lightbox').classList.add('open');
   }
   function closeLightbox(e) {
@@ -3575,7 +3653,7 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
   }
   function lbStep(dir) {
     lbIndex = (lbIndex + dir + lbPhotos.length) % lbPhotos.length;
-    document.getElementById('lbImg').src = lbPhotos[lbIndex].dataUrl;
+    document.getElementById('lbImg').src = lbPhotos[lbIndex].url;
   }
   document.addEventListener('keydown', e => {
     if (!document.getElementById('lightbox').classList.contains('open')) return;
