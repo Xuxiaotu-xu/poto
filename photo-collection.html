@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>六年时光 · 毕业照片收集</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f5f3ef;
+    min-height: 100vh;
+    color: #2c2c2a;
+  }
+
+  /* ── hero ── */
+  .hero {
+    background: linear-gradient(135deg, #7F77DD 0%, #534AB7 100%);
+    color: white;
+    text-align: center;
+    padding: 44px 24px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute; top: -60px; right: -60px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+  }
+  .hero::after {
+    content: ""; position: absolute; bottom: -80px; left: -40px;
+    width: 260px; height: 260px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .hero-icon { font-size: 48px; margin-bottom: 12px; }
+  .hero h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  .hero p { font-size: 14px; opacity: 0.88; line-height: 1.6; max-width: 360px; margin: 0 auto; }
+  .year-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.32);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+
+  .container { max-width: 700px; margin: 0 auto; padding: 0 16px 60px; }
+
+  /* ── top tab bar ── */
+  .main-tab-bar {
+    display: flex; gap: 0;
+    background: #ede9e2; border-radius: 12px; padding: 4px; margin-top: 20px;
+  }
+  .main-tab-btn {
+    flex: 1; padding: 10px 6px;
+    border: none; background: transparent; border-radius: 10px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    color: #888780; transition: all 0.15s; font-family: inherit;
+    white-space: nowrap;
+  }
+  .main-tab-btn.active {
+    background: white; color: #534AB7;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .main-panel { display: none; }
+  .main-panel.active { display: block; }
+
+  /* ── cards ── */
+  .card {
+    background: white; border-radius: 16px; padding: 22px;
+    margin-top: 18px; border: 0.5px solid rgba(0,0,0,0.08);
+  }
+  .card-title {
+    font-size: 15px; font-weight: 600; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px; color: #2c2c2a;
+  }
+  .card-title span { font-size: 18px; }
+
+  /* ── grade selector (upload panel) ── */
+  .grade-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .grade-btn {
+    padding: 14px 8px;
+    border: 1.5px solid #e0ded6;
+    border-radius: 12px;
+    background: #fafaf8;
+    font-size: 14px; font-weight: 500;
+    color: #5f5e5a;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: inherit;
+    line-height: 1.4;
+  }
+  .grade-btn .grade-emoji { display: block; font-size: 24px; margin-bottom: 4px; }
+  .grade-btn:hover { border-color: #7F77DD; color: #534AB7; background: #EEEDFE; }
+  .grade-btn.selected {
+    border-color: #534AB7; background: #EEEDFE; color: #534AB7;
+    box-shadow: inset 0 0 0 1px #534AB7;
+  }
+
+  /* ── upload zone ── */
+  .upload-zone {
+    border: 2px dashed #d3d1c7; border-radius: 12px;
+    padding: 36px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: #fafaf8; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: #7F77DD; background: #EEEDFE;
+  }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 38px; margin-bottom: 10px; }
+  .upload-text { font-size: 15px; font-weight: 500; color: #534AB7; margin-bottom: 4px; }
+  .upload-hint { font-size: 13px; color: #888780; }
+
+  .preview-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+    gap: 8px; margin-top: 14px;
+  }
+  .preview-item {
+    position: relative; aspect-ratio: 1;
+    border-radius: 10px; overflow: hidden; background: #f1efe8;
+  }
+  .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-item .remove-btn {
+    position: absolute; top: 3px; right: 3px;
+    width: 20px; height: 20px; background: rgba(0,0,0,0.55);
+    border: none; border-radius: 50%; color: white; font-size: 12px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  .btn-submit {
+    width: 100%; padding: 14px;
+    background: #534AB7; color: white; border: none;
+    border-radius: 12px; font-size: 16px; font-weight: 600;
+    cursor: pointer; margin-top: 18px; transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn-submit:hover { background: #3C3489; }
+  .btn-submit:disabled { background: #b4b2a9; cursor: not-allowed; }
+
+  .progress-bar {
+    height: 6px; background: #EEEDFE; border-radius: 3px;
+    overflow: hidden; margin-top: 12px; display: none;
+  }
+  .progress-fill {
+    height: 100%; background: #7F77DD; border-radius: 3px;
+    transition: width 0.3s; width: 0%;
+  }
+
+  .success-banner {
+    display: none; background: #EAF3DE;
+    border: 1px solid #c0dd97; border-radius: 12px;
+    padding: 16px 20px; text-align: center; margin-top: 18px;
+  }
+  .success-banner .s-icon { font-size: 32px; margin-bottom: 6px; }
+  .success-banner p { font-size: 14px; color: #3B6D11; line-height: 1.6; }
+
+  .info-tips {
+    background: #EEEDFE; border-radius: 10px;
+    padding: 12px 16px; font-size: 13px; color: #534AB7;
+    line-height: 1.7; margin-top: 14px;
+  }
+
+  /* ── gallery panel ── */
+  .grade-tabs-scroll {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 4px; margin-top: 18px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .grade-tabs-scroll::-webkit-scrollbar { display: none; }
+  .grade-tab-chip {
+    flex-shrink: 0;
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1.5px solid #e0ded6;
+    background: white;
+    font-size: 13px; font-weight: 500;
+    color: #888780; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+    white-space: nowrap;
+  }
+  .grade-tab-chip.active {
+    background: #534AB7; color: white; border-color: #534AB7;
+  }
+
+  .gallery-header {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 14px;
+  }
+  .gallery-grade-title {
+    font-size: 15px; font-weight: 600; color: #2c2c2a;
+  }
+  .gallery-count {
+    font-size: 13px; color: #888780; background: #f1efe8;
+    padding: 3px 10px; border-radius: 20px;
+  }
+
+  .gallery-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .gallery-item {
+    border-radius: 12px; overflow: hidden;
+    background: #f1efe8; border: 0.5px solid rgba(0,0,0,0.07);
+  }
+  .gallery-item img {
+    width: 100%; aspect-ratio: 1; object-fit: cover;
+    display: block; cursor: pointer;
+  }
+  .gallery-item .g-meta { padding: 7px 10px; }
+  .g-meta .g-time { font-size: 11px; color: #b4b2a9; }
+
+  .empty-gallery {
+    text-align: center; padding: 40px 20px;
+    color: #b4b2a9; font-size: 14px; grid-column: 1/-1;
+  }
+  .empty-gallery .e-icon { font-size: 44px; margin-bottom: 10px; }
+
+  /* ── lightbox ── */
+  .lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88); z-index: 999;
+    align-items: center; justify-content: center;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 92vw; max-height: 88vh;
+    border-radius: 10px; object-fit: contain;
+  }
+  .lightbox-close {
+    position: fixed; top: 18px; right: 20px;
+    font-size: 32px; color: white; cursor: pointer;
+    background: none; border: none; line-height: 1;
+  }
+  .lightbox-nav {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    font-size: 28px; color: white; cursor: pointer;
+    background: rgba(255,255,255,0.15); border: none;
+    border-radius: 50%; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #lbPrev { left: 12px; }
+  #lbNext { right: 12px; }
+
+  /* ── share panel ── */
+  .share-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .share-url {
+    flex: 1; padding: 10px 14px; border: 1px solid #e0ded6;
+    border-radius: 10px; font-size: 13px; color: #5f5e5a;
+    background: #fafaf8; outline: none;
+  }
+  .btn-copy {
+    padding: 10px 18px; background: #7F77DD; color: white;
+    border: none; border-radius: 10px; font-size: 13px;
+    font-weight: 500; cursor: pointer; white-space: nowrap;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .btn-copy:hover { background: #534AB7; }
+  .copied-hint { font-size: 12px; color: #3B6D11; display: none; margin-top: 6px; }
+
+  /* ── qr poster ── */
+  .qr-poster-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 16px; margin-top: 4px;
+  }
+  .qr-poster-card {
+    background: white; border-radius: 20px;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    padding: 24px 28px 20px;
+    width: 100%; max-width: 300px;
+    text-align: center;
+  }
+  .qr-poster-header {
+    font-size: 18px; font-weight: 600; color: #2c2c2a;
+    margin-bottom: 4px; line-height: 1.4;
+  }
+  .qr-poster-sub {
+    font-size: 13px; color: #888780; margin-bottom: 18px;
+  }
+  .qr-box {
+    width: 180px; height: 180px; margin: 0 auto 16px;
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid #e0ded6; background: white;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qr-box canvas { display: block; }
+  .qr-poster-tip {
+    font-size: 12px; color: #b4b2a9; margin-bottom: 0;
+    line-height: 1.5;
+  }
+  .qr-badge {
+    display: inline-block;
+    background: #EEEDFE; color: #534AB7;
+    border-radius: 20px; padding: 3px 12px;
+    font-size: 12px; font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .btn-save-poster {
+    width: 100%; max-width: 300px;
+    padding: 13px; background: #534AB7; color: white;
+    border: none; border-radius: 12px; font-size: 15px;
+    font-weight: 600; cursor: pointer; margin-top: 14px;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .btn-save-poster:hover { background: #3C3489; }
+  .poster-hint { font-size: 12px; color: #888780; margin-top: 8px; text-align: center; }
+
+  .deploy-item {
+    margin-bottom: 10px; padding: 12px 14px;
+    background: #fafaf8; border-radius: 10px;
+    border: 0.5px solid #e0ded6; font-size: 13px;
+    color: #5f5e5a; line-height: 1.8;
+  }
+  .deploy-item:last-child { margin-bottom: 0; }
+  .deploy-item strong { color: #534AB7; }
+
+  @media (max-width: 480px) {
+    .hero h1 { font-size: 20px; }
+    .grade-grid { grid-template-columns: repeat(3, 1fr); }
+    .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+    .main-tab-btn { font-size: 13px; padding: 9px 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-icon">📸</div>
+  <h1>六年时光 · 毕业照片收集</h1>
+  <p>按年级上传六年的珍贵照片<br>共同留念这段难忘的成长时光</p>
+  <div class="year-badge">2020 — 2026 小学六年</div>
+</div>
+
+<div class="container">
+
+  <!-- 顶部主导航 -->
+  <div class="main-tab-bar">
+    <button class="main-tab-btn active" onclick="switchMain('upload', this)">📤 上传照片</button>
+    <button class="main-tab-btn" onclick="switchMain('gallery', this)">🖼️ 查看相册</button>
+    <button class="main-tab-btn" onclick="switchMain('share', this)">🔗 分享链接</button>
+  </div>
+
+  <!-- ===== 上传面板 ===== -->
+  <div id="panel-upload" class="main-panel active">
+    <div class="card">
+      <div class="card-title"><span>🏫</span> 选择要上传的年级相册</div>
+      <div class="grade-grid" id="gradeSelector">
+        <button class="grade-btn" onclick="selectGrade(0, this)"><span class="grade-emoji">🌱</span>一年级</button>
+        <button class="grade-btn" onclick="selectGrade(1, this)"><span class="grade-emoji">🌿</span>二年级</button>
+        <button class="grade-btn" onclick="selectGrade(2, this)"><span class="grade-emoji">🌳</span>三年级</button>
+        <button class="grade-btn" onclick="selectGrade(3, this)"><span class="grade-emoji">🌸</span>四年级</button>
+        <button class="grade-btn" onclick="selectGrade(4, this)"><span class="grade-emoji">🍀</span>五年级</button>
+        <button class="grade-btn" onclick="selectGrade(5, this)"><span class="grade-emoji">🎓</span>六年级</button>
+      </div>
+
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this.files)">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text">点击选择 或 拖拽照片到此处</div>
+        <div class="upload-hint">支持 JPG、PNG、HEIC 等格式，可多选</div>
+      </div>
+      <div class="preview-grid" id="previewGrid"></div>
+
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <button class="btn-submit" id="submitBtn" onclick="submitPhotos()">上传到相册</button>
+    </div>
+
+    <div class="success-banner" id="successBanner">
+      <div class="s-icon">🎉</div>
+      <p><strong>上传成功！</strong><br>照片已保存到相册，切换到「查看相册」可浏览所有照片。</p>
+    </div>
+
+    <div class="info-tips">
+      💡 请先选择年级，再上传该年级的照片。<br>
+      同一批照片只会上传到所选年级的相册中。
+    </div>
+  </div>
+
+  <!-- ===== 相册面板 ===== -->
+  <div id="panel-gallery" class="main-panel">
+    <div class="grade-tabs-scroll" id="gradeTabs">
+      <button class="grade-tab-chip active" onclick="switchGalleryGrade(0, this)">🌱 一年级</button>
+      <button class="grade-tab-chip" onclick="switchGalleryGrade(1, this)">🌿 二年级</button>
+      <button class="grade-tab-chip" onclick="switchGalleryGrade(2, this)">🌳 三年级</button>
+      <button class="grade-tab-chip" onclick="switchGalleryGrade(3, this)">🌸 四年级</button>
+      <button class="grade-tab-chip" onclick="switchGalleryGrade(4, this)">🍀 五年级</button>
+      <button class="grade-tab-chip" onclick="switchGalleryGrade(5, this)">🎓 六年级</button>
+    </div>
+
+    <div class="card">
+      <div class="gallery-header">
+        <div class="gallery-grade-title" id="galleryGradeTitle">一年级相册</div>
+        <div class="gallery-count" id="galleryCount">0 张</div>
+      </div>
+      <div class="gallery-grid" id="galleryGrid">
+        <div class="empty-gallery"><div class="e-icon">📭</div><div>还没有照片，快去上传第一张吧！</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 分享面板 ===== -->
+  <div id="panel-share" class="main-panel">
+
+    <!-- 二维码海报 -->
+    <div class="card">
+      <div class="card-title"><span>📲</span> 扫码上传（推荐发群）</div>
+      <p style="font-size:13px;color:#5f5e5a;line-height:1.6;margin-bottom:0;">
+        网页部署后，将自动生成二维码。把海报截图或保存后发到家长群，家长微信扫码即可打开，无需安装任何软件。
+      </p>
+      <div class="qr-poster-wrap">
+        <div class="qr-poster-card" id="posterCard">
+          <div class="qr-poster-header">六年时光</div>
+          <div class="qr-poster-sub">毕业照片共同收集 · 2020—2026</div>
+          <div class="qr-badge">扫码上传您珍藏的照片</div>
+          <div class="qr-box" id="qrBox">
+            <canvas id="qrCanvas"></canvas>
+          </div>
+          <div class="qr-poster-tip">微信扫一扫，上传六年记忆</div>
+        </div>
+        <button class="btn-save-poster" onclick="savePoster()">保存海报图片</button>
+        <div class="poster-hint" id="posterHintText">部署到公开链接后，二维码将自动更新</div>
+      </div>
+    </div>
+
+    <!-- 链接复制 -->
+    <div class="card">
+      <div class="card-title"><span>🔗</span> 复制链接</div>
+      <div class="share-row">
+        <input class="share-url" id="shareUrl" readonly value="">
+        <button class="btn-copy" onclick="copyLink()">复制</button>
+      </div>
+      <div class="copied-hint" id="copiedHint">✓ 已复制到剪贴板</div>
+    </div>
+
+    <!-- 部署方式 -->
+    <div class="card">
+      <div class="card-title"><span>📋</span> 如何获得公开链接？</div>
+      <div class="deploy-item">
+        <strong>方法一（推荐）：Netlify 拖拽部署</strong><br>
+        1. 访问 <code style="background:#EEEDFE;padding:1px 5px;border-radius:4px;">netlify.com</code> 注册账号<br>
+        2. 进入 Sites 页面，将本 HTML 文件拖到蓝色区域<br>
+        3. 几秒后获得 https 链接 → 回到此页面二维码自动更新
+      </div>
+      <div class="deploy-item">
+        <strong>方法二：GitHub Pages</strong><br>
+        1. 注册 GitHub 账号，新建仓库，上传本文件<br>
+        2. Settings → Pages → 选 main 分支 → Save<br>
+        3. 获得 <code style="background:#EEEDFE;padding:1px 5px;border-radius:4px;">https://用户名.github.io/仓库名</code>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 灯箱 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-close" onclick="closeLightboxForce()">×</button>
+  <button class="lightbox-nav" id="lbPrev" onclick="lbStep(-1); event.stopPropagation()">‹</button>
+  <img id="lbImg" src="" alt="">
+  <button class="lightbox-nav" id="lbNext" onclick="lbStep(1); event.stopPropagation()">›</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+  const GRADES = ['一年级','二年级','三年级','四年级','五年级','六年级'];
+  const GRADE_EMOJI = ['🌱','🌿','🌳','🌸','🍀','🎓'];
+
+  function loadPhotos(g) {
+    return JSON.parse(localStorage.getItem('gradPhotos_' + g) || '[]');
+  }
+  function savePhotos(g, arr) {
+    localStorage.setItem('gradPhotos_' + g, JSON.stringify(arr));
+  }
+
+  let selectedGrade = -1;
+  let selectedFiles = [];
+  let currentGalleryGrade = 0;
+  let lbPhotos = [];
+  let lbIndex = 0;
+
+  /* ── main tab switch ── */
+  function switchMain(tab, btn) {
+    document.querySelectorAll('.main-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.main-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    btn.classList.add('active');
+    if (tab === 'gallery') renderGallery(currentGalleryGrade);
+    if (tab === 'share') initSharePanel();
+  }
+
+  /* ── share panel init ── */
+  function initSharePanel() {
+    const url = location.href;
+    document.getElementById('shareUrl').value = url;
+    const isLocal = location.protocol === 'file:' || location.hostname === 'localhost';
+    const hint = document.getElementById('posterHintText');
+
+    if (isLocal) {
+      hint.textContent = '⚠️ 当前为本地文件，请部署到公开链接后二维码才可扫描使用';
+      hint.style.color = '#BA7517';
+      // 本地时生成演示用二维码（含本地路径）
+      generateQR(url);
+    } else {
+      hint.textContent = '扫描上方二维码即可在手机上打开页面';
+      hint.style.color = '#888780';
+      generateQR(url);
+    }
+  }
+
+  function generateQR(url) {
+    const canvas = document.getElementById('qrCanvas');
+    QRCode.toCanvas(canvas, url, {
+      width: 176,
+      margin: 1,
+      color: { dark: '#2c2c2a', light: '#ffffff' },
+      errorCorrectionLevel: 'M'
+    }, function(err) {
+      if (err) console.error(err);
+    });
+  }
+
+  /* ── save poster as image ── */
+  function savePoster() {
+    const card = document.getElementById('posterCard');
+    const qrCanvas = document.getElementById('qrCanvas');
+
+    // Build poster on a fresh canvas
+    const W = 360, H = 460;
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    const ctx = out.getContext('2d');
+
+    // background
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, 0, 0, W, H, 20);
+    ctx.fill();
+
+    // top color bar
+    const grad = ctx.createLinearGradient(0, 0, W, 80);
+    grad.addColorStop(0, '#7F77DD');
+    grad.addColorStop(1, '#534AB7');
+    ctx.fillStyle = grad;
+    roundRect(ctx, 0, 0, W, 80, { tl: 20, tr: 20, bl: 0, br: 0 });
+    ctx.fill();
+
+    // title in bar
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 22px PingFang SC, Microsoft YaHei, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('六年时光 · 毕业照片收集', W / 2, 38);
+    ctx.font = '400 13px PingFang SC, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.fillText('2020 — 2026  小学六年的珍贵记忆', W / 2, 62);
+
+    // instruction text
+    ctx.font = '500 15px PingFang SC, sans-serif';
+    ctx.fillStyle = '#534AB7';
+    ctx.fillText('扫一扫，上传六年珍藏的照片', W / 2, 118);
+
+    // qr code image
+    const qrSize = 200;
+    const qrX = (W - qrSize) / 2;
+    const qrY = 136;
+    // white bg behind qr
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 14);
+    ctx.fill();
+    ctx.strokeStyle = '#e0ded6';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+    // bottom tips
+    ctx.font = '400 13px PingFang SC, sans-serif';
+    ctx.fillStyle = '#888780';
+    ctx.fillText('微信扫码 · 按年级上传照片', W / 2, qrY + qrSize + 36);
+
+    ctx.font = '400 12px PingFang SC, sans-serif';
+    ctx.fillStyle = '#b4b2a9';
+    ctx.fillText('照片将分年级保存，可随时查看', W / 2, qrY + qrSize + 58);
+
+    // footer decoration line
+    ctx.strokeStyle = '#EEEDFE';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(40, H - 36); ctx.lineTo(W - 40, H - 36);
+    ctx.stroke();
+
+    ctx.font = '500 12px PingFang SC, sans-serif';
+    ctx.fillStyle = '#AFA9EC';
+    ctx.fillText('家长群专属相册', W / 2, H - 18);
+
+    // download
+    const link = document.createElement('a');
+    link.download = '毕业照片收集-扫码海报.png';
+    link.href = out.toDataURL('image/png');
+    link.click();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+    ctx.beginPath();
+    ctx.moveTo(x + r.tl, y);
+    ctx.lineTo(x + w - r.tr, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+    ctx.lineTo(x + w, y + h - r.br);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+    ctx.lineTo(x + r.bl, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+    ctx.lineTo(x, y + r.tl);
+    ctx.quadraticCurveTo(x, y, x + r.tl, y);
+    ctx.closePath();
+  }
+
+  /* ── grade select (upload) ── */
+  function selectGrade(idx, btn) {
+    document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedGrade = idx;
+  }
+
+  /* ── file handling ── */
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  function handleFiles(files) {
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      selectedFiles.push(file);
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        item.innerHTML = `<img src="${ev.target.result}"><button class="remove-btn" onclick="removeFile(${selectedFiles.length-1},this)">×</button>`;
+        document.getElementById('previewGrid').appendChild(item);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function removeFile(idx, btn) {
+    selectedFiles[idx] = null;
+    btn.parentElement.remove();
+  }
+
+  /* ── submit ── */
+  function submitPhotos() {
+    if (selectedGrade < 0) { alert('请先选择年级'); return; }
+    const files = selectedFiles.filter(f => f !== null);
+    if (files.length === 0) { alert('请至少选择一张照片'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = '上传中…';
+    document.getElementById('progressBar').style.display = 'block';
+
+    const photos = loadPhotos(selectedGrade);
+    let done = 0; const total = files.length;
+    const now = new Date().toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        photos.push({ id: Date.now() + Math.random(), dataUrl: ev.target.result, time: now });
+        done++;
+        document.getElementById('progressFill').style.width = (done / total * 100) + '%';
+        if (done === total) {
+          savePhotos(selectedGrade, photos);
+          setTimeout(() => {
+            btn.disabled = false; btn.textContent = '上传到相册';
+            document.getElementById('progressBar').style.display = 'none';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('previewGrid').innerHTML = '';
+            selectedFiles = [];
+            document.getElementById('successBanner').style.display = 'block';
+            setTimeout(() => document.getElementById('successBanner').style.display = 'none', 4000);
+          }, 400);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* ── gallery ── */
+  function switchGalleryGrade(idx, btn) {
+    document.querySelectorAll('.grade-tab-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentGalleryGrade = idx;
+    renderGallery(idx);
+  }
+
+  function renderGallery(idx) {
+    const photos = loadPhotos(idx);
+    document.getElementById('galleryGradeTitle').textContent = GRADE_EMOJI[idx] + ' ' + GRADES[idx] + '相册';
+    document.getElementById('galleryCount').textContent = photos.length + ' 张';
+    const grid = document.getElementById('galleryGrid');
+    if (photos.length === 0) {
+      grid.innerHTML = '<div class="empty-gallery"><div class="e-icon">📭</div><div>还没有照片，快去上传吧！</div></div>';
+      return;
+    }
+    lbPhotos = photos.slice().reverse();
+    grid.innerHTML = lbPhotos.map((p, i) => `
+      <div class="gallery-item">
+        <img src="${p.dataUrl}" loading="lazy" onclick="openLightbox(${i})">
+        <div class="g-meta"><div class="g-time">${p.time}</div></div>
+      </div>
+    `).join('');
+  }
+
+  /* ── lightbox ── */
+  function openLightbox(idx) {
+    lbIndex = idx;
+    document.getElementById('lbImg').src = lbPhotos[idx].dataUrl;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox(e) {
+    if (e.target === document.getElementById('lightbox')) closeLightboxForce();
+  }
+  function closeLightboxForce() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lbImg').src = '';
+  }
+  function lbStep(dir) {
+    lbIndex = (lbIndex + dir + lbPhotos.length) % lbPhotos.length;
+    document.getElementById('lbImg').src = lbPhotos[lbIndex].dataUrl;
+  }
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('lightbox').classList.contains('open')) return;
+    if (e.key === 'ArrowLeft') lbStep(-1);
+    if (e.key === 'ArrowRight') lbStep(1);
+    if (e.key === 'Escape') closeLightboxForce();
+  });
+
+  /* ── copy ── */
+  function copyLink() {
+    const url = document.getElementById('shareUrl');
+    url.select();
+    document.execCommand('copy');
+    const h = document.getElementById('copiedHint');
+    h.style.display = 'block';
+    setTimeout(() => h.style.display = 'none', 2000);
+  }
+
+  // init share panel if on share tab on load
+  document.getElementById('shareUrl').value = location.href;
+</script>
+</body>
+</html>
